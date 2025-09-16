@@ -1,4 +1,6 @@
+// fragments-ui/src/app.js
 import { signIn, getUser } from './auth.js';
+import { getUserFragments } from './api.js';
 
 async function init() {
   console.log('DOM loaded, initializing app...');
@@ -28,9 +30,16 @@ async function init() {
   userSection.hidden = false;
   userSection.querySelector('.username').innerText = user.username;
   
-  // Disable the Login button (change this line)
+  // Disable the Login button
   loginBtn.disabled = true;
-  loginBtn.textContent = 'Logged In'; // Optional: change text too
+  loginBtn.textContent = 'Logged In';
+
+  // Do an authenticated request to the fragments API server and log the result
+  console.log('Making authenticated API call...');
+  const userFragments = await getUserFragments(user);
+  console.log('Fragments API response:', userFragments);
+
+  // TODO: later in the course, we will show all the user's fragments in the HTML...
 }
 
 addEventListener('DOMContentLoaded', init);
