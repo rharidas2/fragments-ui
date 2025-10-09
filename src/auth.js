@@ -8,9 +8,7 @@ const cognitoAuthConfig = {
   redirect_uri: process.env.OAUTH_SIGN_IN_REDIRECT_URL,
   response_type: 'code',
   scope: 'phone openid email',
-  // no revoke of "access token" (https://github.com/authts/oidc-client-ts/issues/262)
   revokeTokenTypes: ['refresh_token'],
-  // no silent renew via "prompt=none" (https://github.com/authts/oidc-client-ts/issues/366)
   automaticSilentRenew: false,
 };
 
@@ -20,36 +18,50 @@ const userManager = new UserManager({
 });
 
 export async function signIn() {
-  // Trigger a redirect to the Cognito auth page, so user can authenticate
   await userManager.signinRedirect();
 }
 
-// Create a simplified view of the user, with an extra method for creating the auth headers
+// Create a User class with the authorizationHeaders method
+export class User {
+  constructor(profile, accessToken, idToken) {
+    this.profile = profile;
+    this.accessToken = accessToken;
+    this.idToken = idToken;
+  }
+
+  authorizationHeaders(contentType) {
+    const headers = {
+      Authorization: `Bearer ${this.accessToken}`,
+    };
+    
+    if (contentType) {
+      headers['Content-Type'] = contentType;
+    }
+    
+    return headers;
+  }
+
+  get username() {
+    return this.profile && this.profile['cognito:username'];
+  }
+
+  get email() {
+    return this.profile && this.profile.email;
+  }
+}
+
 function formatUser(user) {
   console.log('User Authenticated', { user });
-  return {
-    // If you add any other profile scopes, you can include them here
-    username: user.profile['cognito:username'],
-    email: user.profile.email,
-    idToken: user.id_token,
-    accessToken: user.access_token,
-    authorizationHeaders: (type = 'application/json') => ({
-      'Content-Type': type,
-      Authorization: `Bearer ${user.id_token}`,
-    }),
-  };
+  return new User(user.profile, user.access_token, user.id_token);
 }
 
 export async function getUser() {
-  // First, check if we're handling a signin redirect callback (e.g., is ?code=... in URL)
   if (window.location.search.includes('code=')) {
     const user = await userManager.signinCallback();
-    // Remove the auth code from the URL without triggering a reload
     window.history.replaceState({}, document.title, window.location.pathname);
     return formatUser(user);
   }
 
-  // Otherwise, get the current user
   const user = await userManager.getUser();
   return user ? formatUser(user) : null;
 }
