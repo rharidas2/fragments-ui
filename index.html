@@ -1,20 +1,133 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
-    <meta charset="utf-8" />
+    <meta charset="UTF-8" />
     <title>Fragments UI</title>
-    <link rel="stylesheet" href="https://unpkg.com/bamboo.css" />
-    <script type="module" src="src/app.js"></script>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        margin: 1.5rem;
+        max-width: 1100px;
+      }
+      h2 {
+        margin-top: 1.5rem;
+      }
+      textarea {
+        width: 100%;
+        min-height: 80px;
+        font-family: monospace;
+      }
+      #output {
+        white-space: pre;
+        background: #f5f5f5;
+        padding: 0.75rem;
+        border-radius: 4px;
+        border: 1px solid #ddd;
+        max-height: 300px;
+        overflow: auto;
+      }
+      #image-preview {
+        max-width: 300px;
+        margin-top: 0.5rem;
+        display: none;
+        border: 1px solid #ccc;
+      }
+      .row {
+        display: flex;
+        gap: 1.5rem;
+        flex-wrap: wrap;
+      }
+      .card {
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        padding: 1rem;
+        flex: 1 1 320px;
+      }
+      button {
+        margin-top: 0.5rem;
+        cursor: pointer;
+      }
+      label {
+        font-weight: 500;
+      }
+    </style>
   </head>
   <body>
-    <h1>Fragments UI</h1>
-    <section>
-      <nav>
-        <button id="login">Login</button>
-      </nav>
+    <h1>Fragments UI (Cognito + ECS)</h1>
+    <p id="status"></p>
+
+    <section class="card">
+      <h2>Authentication</h2>
+      <p id="auth-state">Checking...</p>
+      <button id="btn-login">Login with Cognito</button>
+      <button id="btn-logout" style="display:none;">Logout</button>
     </section>
-    <section hidden id="user">
-      <h2>Hello <span class="username"></span>!</h2>
-    </section>
+
+    <div class="row">
+      <section class="card">
+        <h2>List Fragments</h2>
+        <button id="btn-list">Load Fragments (GET /v1/fragments?expand=1)</button>
+      </section>
+
+      <section class="card">
+        <h2>Create Text / Markdown</h2>
+        <div>
+          <label><input type="radio" name="text-type" value="text/plain" checked> text/plain</label><br />
+          <label><input type="radio" name="text-type" value="text/markdown"> text/markdown</label>
+        </div>
+        <textarea id="text-body" placeholder="Enter text or markdown..."></textarea>
+        <button id="btn-create-text">Create Text Fragment</button>
+      </section>
+
+      <section class="card">
+        <h2>Create JSON</h2>
+        <textarea id="json-body">
+{ "message": "hello from JSON fragment" }
+        </textarea>
+        <button id="btn-create-json">Create JSON Fragment</button>
+      </section>
+    </div>
+
+    <div class="row">
+      <section class="card">
+        <h2>Create Image Fragment</h2>
+        <input id="file-image" type="file" accept="image/*" />
+        <p>Upload PNG, JPEG, GIF, WebP, etc.</p>
+      </section>
+
+      <section class="card">
+        <h2>Fragment Operations</h2>
+        <label>Fragment ID</label>
+        <input id="frag-id" type="text" style="width:100%;" placeholder="Enter fragment id..." />
+
+        <button id="btn-load-frag">Load Fragment Data</button>
+
+        <h3>Update Fragment</h3>
+        <label>Content-Type</label>
+        <input id="update-type" type="text" value="text/plain" style="width:100%;" />
+        <textarea id="update-body" placeholder="New body for fragment..."></textarea>
+        <button id="btn-update">Update Fragment (PUT)</button>
+
+        <h3>Convert Fragment</h3>
+        <label>Extension (e.g., html, txt, json, png, jpg)</label>
+        <input id="convert-ext" type="text" value="html" style="width:100%;" />
+        <button id="btn-convert">Convert Fragment (GET /:id.ext)</button>
+
+        <h3>Delete Fragment</h3>
+        <button id="btn-delete">Delete Fragment (DELETE)</button>
+      </section>
+
+      <section class="card">
+        <h2>Output & Preview</h2>
+        <pre id="output"></pre>
+        <img id="image-preview" alt="Image Preview" />
+      </section>
+    </div>
+
+    ...
+    ...
+    <script type="module" src="./src/main.js"></script>
   </body>
 </html>
+
+

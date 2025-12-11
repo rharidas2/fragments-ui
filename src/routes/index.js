@@ -1,31 +1,50 @@
-// src/routes/index.js
-const express = require('express');
+// src/api.js
 
-// version and author from package.json
-const { version, author } = require('../../package.json');
+// Base URL for your backend API
+// Use env var if provided, otherwise default to localhost:8080
+const API_URL =
+  (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_URL) ||
+  window.API_URL ||
+  'http://localhost:8080';
 
-// Create a router that we can use to mount our API
-const router = express.Router();
+// Helper to build Basic Auth header
+function buildAuthHeader(email, password) {
+  const token = btoa(`${email}:${password}`);
+  return `Basic ${token}`;
+}
 
-/**
- * Expose all of our API routes on /v1/* to include an API version.
- */
-router.use('/v1', require('./api'));
-
-/**
- * Define a simple health check route. If the server is running
- * we'll respond with a 200 OK.  If not, the server isn't healthy.
- */
-router.get('/', (req, res) => {
-  // Client's shouldn't cache this response (always request it fresh)
-  res.setHeader('Cache-Control', 'no-cache');
-  // Send a 200 'OK' response
-  res.status(200).json({
-    status: 'ok',
-    author,
-    githubUrl: 'https://github.com/YOUR_GITHUB_USERNAME/fragments-ui',
-    version,
+// Health check: GET /
+export async function checkHealth() {
+  const res = await fetch(`${API_URL}/`, {
+    method: 'GET',
   });
-});
 
-module.exports = router;
+  const text = await res.text();
+
+  // Try to parse JSON if possible
+  try {
+    const json = JSON.parse(text);
+    return { ok: res.ok, status: res.status, json };
+  } catch (_) {
+    return { ok: res.ok, status: res.status, text };
+  }
+}
+
+// Get current user's fragments: GET /v1/fragments
+export async function getUserFragments(email, password) {
+  const res = await fetch(`${API_URL}/v1/fragments`, {
+    method: 'GET',
+    headers: {
+      Authorization: buildAuthHeader(email, password),
+    },
+  });
+
+  const text = await res.text();
+
+  try {
+    const json = JSON.parse(text);
+    return { ok: res.ok, status: res.status, json };
+  } catch (_) {
+    return { ok: res.ok, status: res.status, text };
+  }
+}

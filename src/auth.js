@@ -1,67 +1,46 @@
 // src/auth.js
+import config from "./app.config.js";
 
-import { UserManager } from 'oidc-client-ts';
+const {
+  cognitoDomain,
+  clientId,
+  redirectUri,
+  region
+} = config.cognito;
 
-const cognitoAuthConfig = {
-  authority: `https://cognito-idp.us-east-1.amazonaws.com/${process.env.AWS_COGNITO_POOL_ID}`,
-  client_id: process.env.AWS_COGNITO_CLIENT_ID,
-  redirect_uri: process.env.OAUTH_SIGN_IN_REDIRECT_URL,
-  response_type: 'code',
-  scope: 'phone openid email',
-  revokeTokenTypes: ['refresh_token'],
-  automaticSilentRenew: false,
-};
+const REDIRECT_URI_ENCODED = encodeURIComponent(redirectUri);
 
-// Create a UserManager instance
-const userManager = new UserManager({
-  ...cognitoAuthConfig,
-});
+const LOGIN_URL = `${cognitoDomain}/login?client_id=${clientId}&response_type=token&scope=openid+email&redirect_uri=${REDIRECT_URI_ENCODED}`;
+const LOGOUT_URL = `${cognitoDomain}/logout?client_id=${clientId}&logout_uri=${REDIRECT_URI_ENCODED}`;
 
-export async function signIn() {
-  await userManager.signinRedirect();
+export function login() {
+  window.location.href = LOGIN_URL;
 }
 
-// Create a User class with the authorizationHeaders method
-export class User {
-  constructor(profile, accessToken, idToken) {
-    this.profile = profile;
-    this.accessToken = accessToken;
-    this.idToken = idToken;
-  }
+export function logout() {
+  localStorage.removeItem("id_token");
+  window.location.href = LOGOUT_URL;
+}
 
-  authorizationHeaders(contentType) {
-    const headers = {
-      Authorization: `Bearer ${this.accessToken}`,
-    };
-    
-    if (contentType) {
-      headers['Content-Type'] = contentType;
-    }
-    
-    return headers;
-  }
+// Called once on page load to see if Cognito sent a token in the #hash
+export function handleCallback() {
+  const hash = window.location.hash.substring(1);
+  if (!hash) return;
 
-  get username() {
-    return this.profile && this.profile['cognito:username'];
-  }
+  const params = new URLSearchParams(hash);
+  const idToken = params.get("id_token");
 
-  get email() {
-    return this.profile && this.profile.email;
+  if (idToken) {
+    localStorage.setItem("id_token", idToken);
+    // Clean URL
+    window.location.hash = "";
   }
 }
 
-function formatUser(user) {
-  console.log('User Authenticated', { user });
-  return new User(user.profile, user.access_token, user.id_token);
+export function getToken() {
+  return localStorage.getItem("id_token");
 }
 
-export async function getUser() {
-  if (window.location.search.includes('code=')) {
-    const user = await userManager.signinCallback();
-    window.history.replaceState({}, document.title, window.location.pathname);
-    return formatUser(user);
-  }
-
-  const user = await userManager.getUser();
-  return user ? formatUser(user) : null;
+export function isAuthenticated() {
+  return !!getToken();
 }

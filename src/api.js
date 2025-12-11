@@ -1,30 +1,46 @@
 // src/api.js
 
-// fragments microservice API to use, defaults to localhost:8080 if not set in env
-const apiUrl = process.env.API_URL || 'http://localhost:8080';
+// For now, hard-code the API URL. We know your backend is on 8080.
+const API_URL = 'http://localhost:8080';
 
-/**
- * Given an authenticated user, request all fragments for this user from the
- * fragments microservice (currently only running locally). We expect a user
- * to have an `idToken` attached, so we can send that along with the request.
- */
-export async function getUserFragments(user) {
-  console.log('Requesting user fragments data...');
-  try {
-    const fragmentsUrl = new URL('/v1/fragments', apiUrl);
-    const res = await fetch(fragmentsUrl, {
-      // Generate headers with the proper Authorization bearer token to pass.
-      // We are using the `authorizationHeaders()` helper method we defined
-      // earlier, to automatically attach the user's ID token.
-      headers: user.authorizationHeaders(),
-    });
-    if (!res.ok) {
-      throw new Error(`${res.status} ${res.statusText}`);
-    }
-    const data = await res.json();
-    console.log('Successfully got user fragments data', { data });
-    return data;
-  } catch (err) {
-    console.error('Unable to call GET /v1/fragment', { err });
+// Build Basic Auth header: "Basic base64(email:password)"
+function buildAuthHeader(email, password) {
+  const token = btoa(`${email}:${password}`);
+  return `Basic ${token}`;
+}
+
+// Generic helper to call the backend
+async function apiRequest(path, { method = 'GET', headers = {}, body } = {}) {
+  const url = `${API_URL}${path}`;
+  const res = await fetch(url, {
+    method,
+    headers,
+    body,
+  });
+
+  const contentType = res.headers.get('Content-Type') || '';
+
+  // Try to parse JSON if possible
+  if (contentType.includes('application/json')) {
+    const json = await res.json();
+    return { ok: res.ok, status: res.status, json };
   }
+
+  // Fallback to text (like "Unauthorized")
+  const text = await res.text();
+  return { ok: res.ok, status: res.status, text };
+}
+
+// Health check: GET /
+export async function checkHealth() {
+  return apiRequest('/');
+}
+
+// Get current user's fragments: GET /v1/fragments
+export async function getUserFragments(email, password) {
+  const headers = {
+    Authorization: buildAuthHeader(email, password),
+  };
+
+  return apiRequest('/v1/fragments', { method: 'GET', headers });
 }
